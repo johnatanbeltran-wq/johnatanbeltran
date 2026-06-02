@@ -1,408 +1,221 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Asistencia Estudiantil</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner QR Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --background: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+        }
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-<style>
-body{
-background:#f5f7fa;
-}
-.card{
-box-shadow:0 2px 10px rgba(0,0,0,.1);
-}
-#reader{
-width:100%;
-max-width:500px;
-margin:auto;
-}
-.qrbox{
-display:flex;
-justify-content:center;
-padding:15px;
-}
-</style>
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-stop {
+            background-color: #ef4444;
+        }
+        .btn-stop:hover {
+            background-color: #dc2626;
+        }
+
+        #reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            border: none !important; /* Quita el borde por defecto de la librería */
+        }
+
+        .history {
+            margin-top: 25px;
+        }
+
+        .history h2 {
+            font-size: 1.1rem;
+            border-bottom: 2px solid var(--background);
+            padding-bottom: 8px;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: var(--background);
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+
+        .history-item .date {
+            font-size: 0.75rem;
+            color: #6b7280;
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container py-4">
+<div class="container">
+    <h1>Escáner de Códigos QR</h1>
+    
+    <button id="btn-toggle" class="btn">Activar Cámara</button>
+    
+    <div id="reader" style="display: none;"></div>
 
-<h2 class="text-center mb-4">
-Sistema de Control de Asistencia
-</h2>
-
-<div class="mb-3">
-<button class="btn btn-success" onclick="nuevoEstudiante()">
-Nuevo Estudiante
-</button>
-
-<button class="btn btn-primary" onclick="exportarBackup()">
-Exportar Backup
-</button>
-
-<input type="file" id="importFile" hidden onchange="importarBackup(event)">
-
-<button class="btn btn-warning" onclick="document.getElementById('importFile').click()">
-Importar Backup
-</button>
-
-<button class="btn btn-dark" onclick="abrirScanner()">
-Escanear QR
-</button>
-</div>
-
-<div class="card mb-4">
-<div class="card-header">
-Estudiantes
-</div>
-
-<div class="table-responsive">
-<table class="table table-bordered table-hover">
-<thead class="table-dark">
-<tr>
-<th>DNI</th>
-<th>Nombres</th>
-<th>Apellidos</th>
-<th>Género</th>
-<th>Edad</th>
-<th>Teléfono</th>
-<th>Acciones</th>
-</tr>
-</thead>
-<tbody id="tablaEstudiantes"></tbody>
-</table>
-</div>
-</div>
-
-<div class="card mb-4">
-<div class="card-header">
-Registro de Asistencias
-</div>
-
-<div class="table-responsive">
-<table class="table table-striped">
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Hora</th>
-<th>DNI</th>
-<th>Estudiante</th>
-<th>Acción</th>
-</tr>
-</thead>
-<tbody id="tablaAsistencias"></tbody>
-</table>
-</div>
-</div>
-
-<div class="card">
-<div class="card-header">
-Lector QR
-</div>
-
-<div class="card-body">
-<div id="reader"></div>
-</div>
-</div>
-
+    <div class="history">
+        <h2>Códigos Registrados</h2>
+        <ul id="history-list" class="history-list">
+            </ul>
+    </div>
 </div>
 
 <script>
-
-let estudiantes =
-JSON.parse(localStorage.getItem("estudiantes")) || [
-
-{dni:"71845236",nombres:"Carlos Andrés",apellidos:"Quispe Ramos",genero:"Masculino",edad:19,telefono:"987654321"},
-{dni:"73691428",nombres:"María Fernanda",apellidos:"Huamán Flores",genero:"Femenino",edad:20,telefono:"965874123"},
-{dni:"70458691",nombres:"José Luis",apellidos:"Cárdenas Soto",genero:"Masculino",edad:18,telefono:"974125863"},
-{dni:"75241869",nombres:"Daniela Sofía",apellidos:"Pérez Vargas",genero:"Femenino",edad:21,telefono:"981236547"},
-{dni:"72639154",nombres:"Luis Alberto",apellidos:"Medina Torres",genero:"Masculino",edad:22,telefono:"963258741"},
-{dni:"74128596",nombres:"Valeria Alejandra",apellidos:"Salazar Rojas",genero:"Femenino",edad:19,telefono:"972456318"},
-{dni:"71593642",nombres:"Miguel Ángel",apellidos:"Castro León",genero:"Masculino",edad:20,telefono:"986321457"},
-{dni:"73452861",nombres:"Andrea Lucía",apellidos:"Paredes Díaz",genero:"Femenino",edad:18,telefono:"978654123"},
-{dni:"70987541",nombres:"Kevin Alexander",apellidos:"Chávez Molina",genero:"Masculino",edad:23,telefono:"964789321"},
-{dni:"74812365",nombres:"Camila Estefanía",apellidos:"Gutiérrez Silva",genero:"Femenino",edad:21,telefono:"985741236"},
-{dni:"72256984",nombres:"Diego Fernando",apellidos:"Aguilar Mendoza",genero:"Masculino",edad:20,telefono:"973852741"},
-{dni:"73961452",nombres:"Paola Nicole",apellidos:"Valdez Herrera",genero:"Femenino",edad:19,telefono:"967123854"},
-{dni:"71125874",nombres:"Jorge Enrique",apellidos:"Romero Castillo",genero:"Masculino",edad:22,telefono:"982369741"},
-{dni:"74589632",nombres:"Karen Milagros",apellidos:"Espinoza López",genero:"Femenino",edad:18,telefono:"971258963"},
-{dni:"72854719",nombres:"Cristian David",apellidos:"Navarro Vega",genero:"Masculino",edad:21,telefono:"984123789"},
-{dni:"75321968",nombres:"Lucía Isabel",apellidos:"Fernández Ríos",genero:"Femenino",edad:20,telefono:"966741258"},
-{dni:"71986325",nombres:"Renato Martín",apellidos:"Torres Cabrera",genero:"Masculino",edad:19,telefono:"979852364"},
-{dni:"73745128",nombres:"Fiorella Andrea",apellidos:"Mendoza Peña",genero:"Femenino",edad:22,telefono:"968357412"},
-{dni:"72419685",nombres:"Álvaro Sebastián",apellidos:"Ortiz Salas",genero:"Masculino",edad:18,telefono:"983741652"},
-{dni:"74685213",nombres:"Briana Alexandra",apellidos:"Rivera Gómez",genero:"Femenino",edad:21,telefono:"975369842"}
-];
-
-let asistencias =
-JSON.parse(localStorage.getItem("asistencias")) || [];
-
-function guardar(){
-localStorage.setItem("estudiantes",JSON.stringify(estudiantes));
-localStorage.setItem("asistencias",JSON.stringify(asistencias));
-}
-
-function render(){
-
-let html='';
-
-estudiantes.forEach((e,i)=>{
-
-html+=`
-<tr>
-<td>${e.dni}</td>
-<td>${e.nombres}</td>
-<td>${e.apellidos}</td>
-<td>${e.genero}</td>
-<td>${e.edad}</td>
-<td>${e.telefono}</td>
-<td>
-
-<button class="btn btn-sm btn-warning"
-onclick="editar(${i})">✏️</button>
-
-<button class="btn btn-sm btn-danger"
-onclick="eliminar(${i})">🗑️</button>
-
-<button class="btn btn-sm btn-info"
-onclick="mostrarQR('${e.dni}')">QR</button>
-
-</td>
-</tr>`;
-});
-
-document.getElementById("tablaEstudiantes").innerHTML=html;
-
-let asis='';
-
-asistencias.forEach((a,i)=>{
-
-asis+=`
-<tr>
-<td>${a.fecha}</td>
-<td>${a.hora}</td>
-<td>${a.dni}</td>
-<td>${a.nombre}</td>
-<td>
-<button class="btn btn-danger btn-sm"
-onclick="eliminarAsistencia(${i})">
-Eliminar
-</button>
-</td>
-</tr>`;
-});
-
-document.getElementById("tablaAsistencias").innerHTML=asis;
-
-guardar();
-}
-
-function nuevoEstudiante(){
-
-Swal.fire({
-title:'Nuevo Estudiante',
-html:`
-<input id="dni" class="swal2-input" placeholder="DNI">
-<input id="nom" class="swal2-input" placeholder="Nombres">
-<input id="ape" class="swal2-input" placeholder="Apellidos">
-<input id="gen" class="swal2-input" placeholder="Género">
-<input id="edad" class="swal2-input" placeholder="Edad">
-<input id="tel" class="swal2-input" placeholder="Teléfono">
-`,
-preConfirm:()=>{
-
-estudiantes.push({
-dni:dni.value,
-nombres:nom.value,
-apellidos:ape.value,
-genero:gen.value,
-edad:edad.value,
-telefono:tel.value
-});
-
-render();
-}
-});
-}
-
-function editar(i){
-
-let e=estudiantes[i];
-
-Swal.fire({
-title:'Editar',
-html:`
-<input id="dni" class="swal2-input" value="${e.dni}">
-<input id="nom" class="swal2-input" value="${e.nombres}">
-<input id="ape" class="swal2-input" value="${e.apellidos}">
-<input id="gen" class="swal2-input" value="${e.genero}">
-<input id="edad" class="swal2-input" value="${e.edad}">
-<input id="tel" class="swal2-input" value="${e.telefono}">
-`,
-preConfirm:()=>{
-
-estudiantes[i]={
-dni:dni.value,
-nombres:nom.value,
-apellidos:ape.value,
-genero:gen.value,
-edad:edad.value,
-telefono:tel.value
-};
-
-render();
-}
-});
-}
-
-function eliminar(i){
-estudiantes.splice(i,1);
-render();
-}
-
-function mostrarQR(dni){
-
-Swal.fire({
-title:'Código QR',
-html:'<div id="qr"></div>',
-didOpen:()=>{
-new QRCode(document.getElementById("qr"),dni);
-}
-});
-}
-
-function registrarAsistencia(dni){
-
-let alumno=
-estudiantes.find(x=>x.dni===dni);
-
-if(!alumno)return;
-
-let ahora=new Date();
-
-asistencias.push({
-
-dni,
-nombre:alumno.nombres+" "+alumno.apellidos,
-fecha:ahora.toLocaleDateString(),
-hora:ahora.toLocaleTimeString()
-
-});
-
-render();
-
-Swal.fire(
-'Asistencia registrada',
-alumno.nombres,
-'success'
-);
-}
-
-function eliminarAsistencia(i){
-asistencias.splice(i,1);
-render();
-}
-
-function exportarBackup(){
-
-const contenido=
-`const backup=${JSON.stringify({
-estudiantes,
-asistencias
-},null,2)};`;
-
-const blob=
-new Blob([contenido],{type:'text/javascript'});
-
-const a=document.createElement('a');
-
-a.href=URL.createObjectURL(blob);
-a.download='backup.js';
-a.click();
-}
-
-function importarBackup(e){
-
-const archivo=e.target.files[0];
-
-if(!archivo)return;
-
-const lector=new FileReader();
-
-lector.onload=function(ev){
-
-try{
-
-const texto=ev.target.result;
-
-if(texto.includes("const backup=")){
-
-eval(texto);
-
-estudiantes=backup.estudiantes;
-asistencias=backup.asistencias;
-
-}else{
-
-const data=JSON.parse(texto);
-
-estudiantes=data.estudiantes;
-asistencias=data.asistencias;
-}
-
-render();
-
-Swal.fire(
-'Importado',
-'Datos restaurados',
-'success'
-);
-
-}catch(err){
-
-Swal.fire(
-'Error',
-'Archivo inválido',
-'error'
-);
-
-}
-}
-
-lector.readAsText(archivo);
-}
-
-let scannerActivo=false;
-
-function abrirScanner(){
-
-if(scannerActivo)return;
-
-const qrScanner=
-new Html5Qrcode("reader");
-
-qrScanner.start(
-{ facingMode:"environment" },
-{ fps:10, qrbox:250 },
-(texto)=>{
-
-registrarAsistencia(texto);
-
-},
-()=>{}
-);
-
-scannerActivo=true;
-}
-
-render();
-
+    const btnToggle = document.getElementById('btn-toggle');
+    const readerDiv = document.getElementById('reader');
+    const historyList = document.getElementById('history-list');
+    
+    let html5QrCode;
+    let isScanning = false;
+
+    // Instanciar el escáner (pasando el ID del contenedor HTML)
+    html5QrCode = new Html5Qrcode("reader");
+
+    btnToggle.addEventListener('click', () => {
+        if (!isScanning) {
+            startScanner();
+        } else {
+            stopScanner();
+        }
+    });
+
+    function startScanner() {
+        readerDiv.style.display = 'block';
+        btnToggle.textContent = 'Apagar Cámara';
+        btnToggle.classList.add('btn-stop');
+
+        // Configuración para móviles: 'environment' prioriza la cámara trasera
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            onScanSuccess
+        ).then(() => {
+            isScanning = true;
+        }).catch((err) => {
+            console.error("Error al iniciar la cámara:", err);
+            alert("No se pudo acceder a la cámara. Asegúrate de dar los permisos necesarios.");
+            resetUI();
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                resetUI();
+            }).catch((err) => {
+                console.error("Error al detener la cámara:", err);
+            });
+        }
+    }
+
+    function resetUI() {
+        readerDiv.style.display = 'none';
+        btnToggle.textContent = 'Activar Cámara';
+        btnToggle.classList.remove('btn-stop');
+        isScanning = false;
+    }
+
+    // Función que se ejecuta cuando se detecta un QR con éxito
+    function onScanSuccess(decodedText, decodedResult) {
+        // Detenemos la cámara momentáneamente para evitar múltiples lecturas del mismo código
+        stopScanner();
+
+        // Obtener fecha y hora actual formateada
+        const ahora = new Date();
+        const fechaHoraFormateada = ahora.toLocaleString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        // Guardar en la lista (puedes adaptarlo para guardar en LocalStorage si lo requieres permanente)
+        agregarAlHistorial(decodedText, fechaHoraFormateada);
+        
+        // Alerta visual de éxito
+        alert(`¡Código detectado con éxito!\nContenido: ${decodedText}`);
+    }
+
+    function agregarAlHistorial(texto, fechaHora) {
+        const li = document.createElement('li');
+        li.classList.add('history-item');
+        
+        li.innerHTML = `
+            <span class="date">📅 ${fechaHora}</span>
+            <strong>Contenido:</strong> ${texto}
+        `;
+        
+        // Insertar al principio de la lista para ver lo más reciente arriba
+        historyList.insertBefore(li, historyList.firstChild);
+    }
 </script>
 
 </body>
